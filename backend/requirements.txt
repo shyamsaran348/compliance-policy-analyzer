@@ -1,0 +1,10 @@
+fastapi==0.110.0
+uvicorn[standard]==0.27.1
+python-dotenv==1.0.1
+pydantic==2.6.4
+groq
+langchain-community
+langchain-core
+langchain-chroma
+sentence-transformers
+chromadb
