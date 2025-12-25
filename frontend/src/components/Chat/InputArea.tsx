@@ -5,16 +5,24 @@ interface InputAreaProps {
     onSend: (text: string, apiKey: string) => void;
     isLoading: boolean;
     messagesCount: number;
+    disabled?: boolean;
+    disabledPlaceholder?: string;
 }
 
-export const InputArea: React.FC<InputAreaProps> = ({ onSend, isLoading, messagesCount }) => {
+export const InputArea: React.FC<InputAreaProps> = ({
+    onSend,
+    isLoading,
+    messagesCount,
+    disabled = false,
+    disabledPlaceholder = "Ask about compliance policies..."
+}) => {
     const [text, setText] = useState('');
     const [apiKey, setApiKey] = useState(''); // In a real app, manage this better
     const [showKeyInput, setShowKeyInput] = useState(false);
 
     const handleSend = () => {
+        if (disabled) return;
         if (!text.trim() || !apiKey.trim()) {
-            // Simple alert for MVP, nice UI toast later if time
             if (!apiKey.trim()) setShowKeyInput(true);
             return;
         }
@@ -28,6 +36,33 @@ export const InputArea: React.FC<InputAreaProps> = ({ onSend, isLoading, message
             handleSend();
         }
     };
+
+    // ... existing suggestions ...
+
+    // ... inside the textarea style ...
+    <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder={disabled ? disabledPlaceholder : "Ask about compliance policies..."}
+        style={{
+            flex: 1,
+            border: 'none',
+            outline: 'none',
+            resize: 'none',
+            minHeight: '24px',
+            maxHeight: '200px',
+            padding: 'var(--space-2)',
+            fontSize: '1rem',
+            lineHeight: 1.5,
+            color: 'var(--text-primary)',
+            backgroundColor: 'transparent',
+            opacity: disabled ? 0.5 : 1,
+            cursor: disabled ? 'not-allowed' : 'text'
+        }}
+        disabled={isLoading || disabled}
+        rows={1}
+    />
 
     const suggestions = [
         "What is Article 15?",

@@ -21,7 +21,7 @@ def chat(
     api_key: str = Depends(verify_api_key)
 ):
     try:
-        return rag_service.run(request.question)
+        return rag_service.run(request.question, request.workspace_id)
     except Exception:
         # Never leak internal details
         raise HTTPException(

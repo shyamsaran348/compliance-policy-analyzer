@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.chat import router as chat_router
+from app.api.documents import router as documents_router
+from app.api.workspaces import router as workspaces_router
 
 app = FastAPI(
     title="Compliance & Policy Analyzer API",
@@ -8,7 +10,6 @@ app = FastAPI(
 )
 
 # CORS Configuration
-# Relaxing CORS to allow all origins for debugging
 origins = ["*"]
 
 app.add_middleware(
@@ -19,11 +20,11 @@ app.add_middleware(
     allow_headers=["*", "x-api-key"],
 )
 
-
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
 
-
 # Register API routes
 app.include_router(chat_router)
+app.include_router(documents_router, prefix="/api/v1")
+app.include_router(workspaces_router, prefix="/api/v1")

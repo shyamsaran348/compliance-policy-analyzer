@@ -1,22 +1,38 @@
 # backend/app/services/rag_service.py
 
 from typing import Dict, List
+from fastapi import HTTPException
 
 from app.rag.retriever import PolicyRetriever
 from app.rag.prompt import build_prompt
 from app.rag.generator import LLMGenerator
+from app.services.workspace_service import workspace_service
 
 REFUSAL_RESPONSE = "Answer not found in the provided documents."
 
 
 class RAGService:
     def __init__(self):
-        self.retriever = PolicyRetriever(k=3)
+        # Generator is global/shared
         self.generator = LLMGenerator()
 
-    def run(self, question: str) -> Dict:
+    def run(self, question: str, workspace_id: str) -> Dict:
+        # Step 0: Validate Workspace & Init Retriever
+        workspace = workspace_service.get_workspace(workspace_id)
+        if not workspace:
+            raise HTTPException(status_code=404, detail="Workspace not found")
+        
+        # Consistent naming convention from WorkspaceService
+        collection_name = f"workspace_{workspace.id}"
+        
+        # Initialize scoped retriever (Note: In high-scale, cache this)
+        try:
+            retriever = PolicyRetriever(collection_name=collection_name, k=7)
+        except FileNotFoundError:
+             raise HTTPException(status_code=404, detail="Workspace vector store not found")
+
         # Step 1: Retrieve relevant documents
-        docs = self.retriever.retrieve(question)
+        docs = retriever.retrieve(question)
 
         if not docs:
             return {

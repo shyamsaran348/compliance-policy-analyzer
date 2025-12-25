@@ -5,19 +5,26 @@ from langchain_core.documents import Document
 import os
 
 
+from pathlib import Path
+
 class PolicyRetriever:
     """
     Handles similarity-based retrieval from ChromaDB.
     """
 
-    def __init__(self, k: int = 7):
+    def __init__(self, collection_name: str, k: int = 7, persist_dir: str = None):
         self.k = k
-        self.persist_dir = "backend/data/chroma"
-        self.collection_name = "policy_docs"
+        # Resolve 'storage/chroma' reliably using __file__
+        # retriever.py is in backend/app/rag -> parents[3] is project root
+        base_dir = Path(__file__).resolve().parents[3]
+        default_dir = base_dir / "storage" / "chroma"
+        
+        self.persist_dir = persist_dir or str(default_dir)
+        self.collection_name = collection_name
 
         if not os.path.exists(self.persist_dir):
             raise FileNotFoundError(
-                "ChromaDB directory not found. Run ingestion first."
+                f"ChromaDB directory not found at {self.persist_dir}. Run ingestion first."
             )
 
         embedding_model = get_embedding_model()

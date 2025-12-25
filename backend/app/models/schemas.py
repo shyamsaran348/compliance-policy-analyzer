@@ -10,6 +10,10 @@ class ChatRequest(BaseModel):
         min_length=3,
         description="User question about the policy document"
     )
+    workspace_id: str = Field(
+        ...,
+        description="ID of the workspace boundary to retrieve from"
+    )
 
 
 class Citation(BaseModel):

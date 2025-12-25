@@ -18,7 +18,7 @@ interface UseChatReturn {
     clearChat: () => void;
 }
 
-export const useChat = (): UseChatReturn => {
+export const useChat = (workspaceId?: string): UseChatReturn => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -58,17 +58,22 @@ export const useChat = (): UseChatReturn => {
         abortControllerRef.current = new AbortController();
 
         try {
+            const bodyPayload = {
+                question: text,
+                workspace_id: workspaceId || "default_error_trap"
+            };
+
             const response = await fetch(`${API_BASE_URL}/chat`, {
                 method: 'POST',
                 headers: getHeaders(apiKey),
-                body: JSON.stringify({ question: text }),
+                body: JSON.stringify(bodyPayload),
                 signal: abortControllerRef.current.signal,
             });
 
             if (!response.ok) {
                 if (response.status === 401) throw new Error("Invalid API Key");
                 if (response.status === 400) throw new Error("Bad Request (Check inputs)");
-                if (response.status === 422) throw new Error("Validation Error (Check inputs)");
+                if (response.status === 422) throw new Error("Validation Error: No Workspace Selected"); // Specific hint
                 if (response.status === 429) throw new Error("Rate limit exceeded. Please wait.");
                 throw new Error(`Server Error: ${response.statusText}`);
             }
@@ -111,7 +116,7 @@ export const useChat = (): UseChatReturn => {
                 )
             );
         }
-    }, []);
+    }, [workspaceId]);
 
     return {
         messages,

@@ -14,11 +14,15 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 DOCUMENTS_DIR = BASE_DIR / "data" / "documents"
 
 
-def load_pdf_pages(pdf_name: str):
+def load_pdf_pages(pdf_name_or_path: str):
     """
     Load a PDF and return raw page-level Documents.
+    Accepts either a filename in DOCUMENTS_DIR or an absolute path.
     """
-    pdf_path = DOCUMENTS_DIR / pdf_name
+    if os.path.isabs(pdf_name_or_path):
+        pdf_path = Path(pdf_name_or_path)
+    else:
+        pdf_path = DOCUMENTS_DIR / pdf_name_or_path
 
     if not pdf_path.exists():
         raise FileNotFoundError(f"PDF not found at path: {pdf_path}")
@@ -103,11 +107,13 @@ def validate_chunks(chunks):
 
     print("✅ Ingestion validation passed")
 
-def index_chunks(chunks):
+def index_chunks(chunks, collection_name="policy_docs", persist_dir=None):
     """
     Stores validated chunks into ChromaDB with embeddings and metadata.
     """
-    persist_dir = "backend/data/chroma"
+    if persist_dir is None:
+        persist_dir = "backend/data/chroma"
+    
     os.makedirs(persist_dir, exist_ok=True)
 
     embedding_model = get_embedding_model()
@@ -122,12 +128,16 @@ def index_chunks(chunks):
         ids=ids,
         embedding=embedding_model.embedder,
         persist_directory=persist_dir,
-        collection_name="policy_docs"
+        collection_name=collection_name
     )
 
-    vectorstore.persist()
+    # vectorstore.persist() # Chroma 0.4+ persists automatically, but keeping if older version
+    try:
+        vectorstore.persist()
+    except:
+        pass
 
-    print(f"✅ Stored {len(texts)} chunks in ChromaDB")
+    print(f"✅ Stored {len(texts)} chunks in ChromaDB collection: {collection_name}")
 
 
     

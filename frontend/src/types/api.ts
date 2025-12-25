@@ -1,24 +1,44 @@
 /**
  * TypeScript definitions mirroring Backend Pydantic schemas.
- * Ensure strict synchronization with backend/app/models/schemas.py
+ * Ensure strict synchronization with backend/app/models/
  */
 
 export interface ChatRequest {
   question: string;
-  stream?: boolean; // Default is true in logic, but optional in type
+  workspace_id: string; // Mandatory for V2
+}
+
+export interface CreateWorkspaceRequest {
+  name: string;
+  document_ids: string[];
+}
+
+export interface DocumentMetadata {
+  id: string;
+  filename: string;
+  status: 'processing' | 'available' | 'error';
+  page_count: number;
+  upload_timestamp: string;
+}
+
+export interface Workspace {
+  id: string;
+  name: string;
+  document_ids: string[];
+  created_at: string;
 }
 
 export interface Citation {
   doc_name: string;
   page_number: number;
   snippet: string;
-  score?: number; // Optional, sometimes returned by retrievers
+  score?: number;
 }
 
 export interface ChatResponse {
   answer: string;
   citations: Citation[];
-  error?: string; // For handling refusals or backend errors gracefully
+  error?: string;
 }
 
 // For SSE Streaming, we might receive partial chunks or a final event.
