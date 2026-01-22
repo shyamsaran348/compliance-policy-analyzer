@@ -1,100 +1,53 @@
-import shutil
-import os
-import json
-from pathlib import Path
+import io
 from datetime import datetime
 from typing import List, Optional
 from fastapi import UploadFile, HTTPException
+from pypdf import PdfReader
 
 from app.models.document import DocumentMetadata
-from app.rag.ingest import load_pdf_pages, normalize_pages, chunk_pages, validate_chunks, index_chunks
+from app.rag.ingest import process_and_index_document
 
-# Constants
-BASE_DIR = Path(__file__).resolve().parents[3]
-STORAGE_DIR = BASE_DIR / "storage" / "documents"
-METADATA_FILE = BASE_DIR / "storage" / "metadata.json"
-CHROMA_DIR = BASE_DIR / "storage" / "chroma"
-STAGING_COLLECTION = "staging_docs"
+# In-Memory Metadata Store (For Vercel demo purposes)
+# In a real app, use Supabase/Postgres.
+# This will reset on every server restart (Vercel cold boot).
+_memory_metadata_store = []
 
 class DocumentService:
-    def __init__(self):
-        os.makedirs(STORAGE_DIR, exist_ok=True)
-        if not METADATA_FILE.exists():
-            with open(METADATA_FILE, "w") as f:
-                json.dump([], f)
-
-    def _load_metadata(self) -> List[dict]:
-        with open(METADATA_FILE, "r") as f:
-            try:
-                return json.load(f)
-            except json.JSONDecodeError:
-                return []
-
-    def _save_metadata(self, metadata_list: List[dict]):
-        with open(METADATA_FILE, "w") as f:
-            json.dump(metadata_list, f, indent=2, default=str)
-
     def list_documents(self) -> List[DocumentMetadata]:
-        data = self._load_metadata()
-        return [DocumentMetadata(**item) for item in data]
-
-    def get_document(self, doc_id: str) -> Optional[DocumentMetadata]:
-        docs = self.list_documents()
-        for doc in docs:
-            if doc.id == doc_id:
-                return doc
-        return None
+        return _memory_metadata_store
 
     async def upload_document(self, file: UploadFile) -> DocumentMetadata:
         # 1. Validation
         if not file.filename.endswith(".pdf"):
             raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
 
-        # 2. ID Generation & Path
-        doc_id = f"doc_{int(datetime.now().timestamp())}_{file.filename.replace(' ', '_')}"
-        file_path = STORAGE_DIR / f"{doc_id}.pdf"
-
-        # 3. Save to Disk
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-
-        # 4. Ingestion Pipeline
         try:
-            # Load & Normalize
-            raw_pages = load_pdf_pages(str(file_path))
-            pages = normalize_pages(raw_pages, file.filename)
+            # 2. Read File to Memory
+            content = await file.read()
+            pdf_file = io.BytesIO(content)
             
-            # Chunking
-            chunks = chunk_pages(pages)
-            validate_chunks(chunks)
+            # 3. Extract Text (Basic Extraction)
+            reader = PdfReader(pdf_file)
+            text_content = ""
+            for page in reader.pages:
+                text_content += page.extract_text() + "\n"
 
-            # Indexing to STAGING Collection
-            # IMPORTANT: We use a specific staging collection, NOT the active chat one.
-            index_chunks(
-                chunks, 
-                collection_name=STAGING_COLLECTION,
-                persist_dir=str(CHROMA_DIR)
-            )
+            # 4. Ingest to Pinecone
+            chunk_count = process_and_index_document(text_content, file.filename)
 
-            # 5. Metadata Registration
+            # 5. Metadata Registration (In-Memory)
             doc_meta = DocumentMetadata(
-                id=doc_id,
+                id=f"doc_{int(datetime.now().timestamp())}",
                 filename=file.filename,
                 upload_timestamp=datetime.now(),
-                status="available",
-                page_count=len(pages)
+                status="indexed",
+                page_count=len(reader.pages)
             )
-
-            current_meta = self._load_metadata()
-            current_meta.append(doc_meta.model_dump())
-            self._save_metadata(current_meta)
+            _memory_metadata_store.append(doc_meta)
 
             return doc_meta
 
         except Exception as e:
-            # Cleanup on failure
-            if file_path.exists():
-                os.remove(file_path)
             raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}")
 
 document_service = DocumentService()

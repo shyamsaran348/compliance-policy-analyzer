@@ -5,7 +5,10 @@ pydantic==2.6.4
 groq
 langchain-community
 langchain-core
-langchain-chroma
-sentence-transformers
-chromadb
+langchain-pinecone
+langchain-huggingface
+pinecone-client
 python-multipart
+pypdf
+# Removed heavy libs: sentence-transformers, chromadb, langchain-chroma
+

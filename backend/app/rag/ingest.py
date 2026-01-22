@@ -1,159 +1,79 @@
 # backend/app/rag/ingest.py
 
-from pathlib import Path
-from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import Chroma
+from langchain_pinecone import PineconeVectorStore
 from app.rag.embeddings import get_embedding_model
-import os
+from app.core.config import settings
+from pinecone import Pinecone, ServerlessSpec
+import time
 
-
-# Resolve backend root
-BASE_DIR = Path(__file__).resolve().parents[2]
-DOCUMENTS_DIR = BASE_DIR / "data" / "documents"
-
-
-def load_pdf_pages(pdf_name_or_path: str):
+def process_and_index_document(text_content: str, filename: str):
     """
-    Load a PDF and return raw page-level Documents.
-    Accepts either a filename in DOCUMENTS_DIR or an absolute path.
+    Takes raw text from a PDF (extracted in service layer) 
+    and indexes it into Pinecone.
     """
-    if os.path.isabs(pdf_name_or_path):
-        pdf_path = Path(pdf_name_or_path)
-    else:
-        pdf_path = DOCUMENTS_DIR / pdf_name_or_path
-
-    if not pdf_path.exists():
-        raise FileNotFoundError(f"PDF not found at path: {pdf_path}")
-
-    loader = PyPDFLoader(str(pdf_path))
-    return loader.load()
-
-
-def normalize_pages(raw_pages, doc_name: str):
-    """
-    Normalize raw PDF pages into clean Documents
-    with controlled metadata.
-    """
-    normalized_docs = []
-
-    for page in raw_pages:
-        page_number = page.metadata.get("page", 0) + 1
-
-        normalized_docs.append(
-            Document(
-                page_content=page.page_content,
-                metadata={
-                    "doc_name": doc_name,
-                    "page_number": page_number,
-                }
-            )
-        )
-
-    return normalized_docs
-
-
-def chunk_pages(pages):
-    """
-    Split pages into overlapping semantic chunks
-    while preserving metadata and assigning chunk_id.
-    """
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=800,
-        chunk_overlap=150
+    
+    # 1. Create Document Object
+    doc = Document(
+        page_content=text_content,
+        metadata={"doc_name": filename}
     )
 
-    chunked_docs = []
+    # 2. Chunking
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200
+    )
+    chunks = splitter.split_documents([doc])
 
-    for page in pages:
-        splits = splitter.split_text(page.page_content)
+    # 3. Add Chunk Metadata
+    for idx, chunk in enumerate(chunks):
+        chunk.metadata["chunk_id"] = f"{filename}_c{idx}"
+        chunk.metadata["text"] = chunk.page_content # Explicitly store text for retrieval if needed
 
-        for idx, chunk in enumerate(splits):
-            chunked_docs.append(
-                Document(
-                    page_content=chunk,
-                    metadata={
-                        "doc_name": page.metadata["doc_name"],
-                        "page_number": page.metadata["page_number"],
-                        "chunk_id": f"{page.metadata['doc_name']}_p{page.metadata['page_number']}_c{idx + 1}"
-                    }
-                )
-            )
+    print(f"Split {filename} into {len(chunks)} chunks.")
 
-    return chunked_docs
+    # 4. Index to Pinecone
+    index_chunks(chunks)
 
-def validate_chunks(chunks):
+    return len(chunks)
+
+def index_chunks(chunks):
     """
-    Run sanity checks on ingested chunks.
+    Stores validated chunks into Pinecone.
     """
-    assert len(chunks) > 0, "No chunks created"
-
-    seen_chunk_ids = set()
-
-    for chunk in chunks:
-        # Content validation
-        assert chunk.page_content.strip(), "Empty chunk content"
-
-        # Metadata validation
-        metadata = chunk.metadata
-        assert "doc_name" in metadata, "Missing doc_name"
-        assert "page_number" in metadata, "Missing page_number"
-        assert "chunk_id" in metadata, "Missing chunk_id"
-
-        # Uniqueness check
-        assert metadata["chunk_id"] not in seen_chunk_ids, "Duplicate chunk_id detected"
-        seen_chunk_ids.add(metadata["chunk_id"])
-
-    print("✅ Ingestion validation passed")
-
-def index_chunks(chunks, collection_name="policy_docs", persist_dir=None):
-    """
-    Stores validated chunks into ChromaDB with embeddings and metadata.
-    """
-    if persist_dir is None:
-        persist_dir = "backend/data/chroma"
-    
-    os.makedirs(persist_dir, exist_ok=True)
+    if not settings.PINECONE_API_KEY:
+        raise ValueError("PINECONE_API_KEY is missing via env vars")
 
     embedding_model = get_embedding_model()
 
-    texts = [chunk.page_content for chunk in chunks]
-    metadatas = [chunk.metadata for chunk in chunks]
-    ids = [chunk.metadata["chunk_id"] for chunk in chunks]
+    # Initialize Pinecone
+    pc = Pinecone(api_key=settings.PINECONE_API_KEY)
+    
+    index_name = settings.PINECONE_INDEX_NAME
 
-    vectorstore = Chroma.from_texts(
-        texts=texts,
-        metadatas=metadatas,
-        ids=ids,
+    # Check if index exists, if not create (Serverless)
+    existing_indexes = [i.name for i in pc.list_indexes()]
+    if index_name not in existing_indexes:
+        print(f"Creating Pinecone index: {index_name}...")
+        pc.create_index(
+            name=index_name,
+            dimension=384, # Match MiniLM-L6-v2 dimension
+            metric="cosine",
+            spec=ServerlessSpec(
+                cloud="aws",
+                region="us-east-1"
+            )
+        )
+        while not pc.describe_index(index_name).status['ready']:
+            time.sleep(1)
+
+    # Store
+    vectorstore = PineconeVectorStore.from_documents(
+        documents=chunks,
         embedding=embedding_model.embedder,
-        persist_directory=persist_dir,
-        collection_name=collection_name
+        index_name=index_name
     )
 
-    # vectorstore.persist() # Chroma 0.4+ persists automatically, but keeping if older version
-    try:
-        vectorstore.persist()
-    except:
-        pass
-
-    print(f"✅ Stored {len(texts)} chunks in ChromaDB collection: {collection_name}")
-
-
-    
-
-
-
-if __name__ == "__main__":
-    raw_pages = load_pdf_pages("gdpr.pdf")
-    pages = normalize_pages(raw_pages, "gdpr.pdf")
-    chunks = chunk_pages(pages)
-
-    validate_chunks(chunks)
-
-    print(f"Total pages: {len(pages)}")
-    print(f"Total chunks: {len(chunks)}")
-    print("Sample validated chunk metadata:")
-    print(chunks[0].metadata)
-
-    index_chunks(chunks)
+    print(f"✅ Stored {len(chunks)} chunks in Pinecone index: {index_name}")

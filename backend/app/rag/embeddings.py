@@ -1,51 +1,36 @@
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEndpointEmbeddings
 from typing import List
-
+from app.core.config import settings
+import os
 
 class EmbeddingModel:
     """
     Centralized embedding model for the entire RAG system.
-
-    This ensures:
-    - Same model is used for documents and queries
-    - Deterministic vector generation
-    - Easy replacement if needed (without touching retrieval logic)
+    Uses HuggingFace Inference API to avoid heavy local models.
     """
 
     def __init__(self):
+        # Using a solid general purpose model that is usually free on HF Inference API
         self.model_name = "sentence-transformers/all-MiniLM-L6-v2"
-        self.embedder = HuggingFaceEmbeddings(
-            model_name=self.model_name
+        
+        if not settings.HUGGINGFACEHUB_API_TOKEN:
+            print("⚠️ WARNING: HUGGINGFACEHUB_API_TOKEN not set. Embeddings will fail.")
+
+        self.embedder = HuggingFaceEndpointEmbeddings(
+            model=self.model_name,
+            huggingfacehub_api_token=settings.HUGGINGFACEHUB_API_TOKEN,
+            task="feature-extraction"
         )
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        """
-        Embed a list of document chunks.
-
-        Args:
-            texts: List of chunk texts
-
-        Returns:
-            List of embedding vectors
-        """
         return self.embedder.embed_documents(texts)
 
     def embed_query(self, query: str) -> List[float]:
-        """
-        Embed a user query.
-
-        Args:
-            query: User question
-
-        Returns:
-            Query embedding vector
-        """
         return self.embedder.embed_query(query)
 
 
-# Singleton-style accessor (recommended)
+# Singleton-style accessor
 _embedding_model = None
-
 
 def get_embedding_model() -> EmbeddingModel:
     global _embedding_model

@@ -1,6 +1,4 @@
-# backend/app/services/rag_service.py
-
-from typing import Dict, List
+from typing import Dict, List, Optional
 from fastapi import HTTPException
 
 from app.rag.retriever import PolicyRetriever
@@ -15,24 +13,44 @@ class RAGService:
     def __init__(self):
         # Generator is global/shared
         self.generator = LLMGenerator()
+        # Retriever lazy init
+        self._retriever: Optional[PolicyRetriever] = None
+
+    @property
+    def retriever(self) -> PolicyRetriever:
+        if self._retriever is None:
+            self._retriever = PolicyRetriever(k=7)
+        return self._retriever
 
     def run(self, question: str, workspace_id: str) -> Dict:
-        # Step 0: Validate Workspace & Init Retriever
+        # Step 0: Validate Workspace & Get Filenames
         workspace = workspace_service.get_workspace(workspace_id)
         if not workspace:
             raise HTTPException(status_code=404, detail="Workspace not found")
         
-        # Consistent naming convention from WorkspaceService
-        collection_name = f"workspace_{workspace.id}"
+        filenames = workspace_service.get_workspace_filenames(workspace_id)
         
-        # Initialize scoped retriever (Note: In high-scale, cache this)
-        try:
-            retriever = PolicyRetriever(collection_name=collection_name, k=7)
-        except FileNotFoundError:
-             raise HTTPException(status_code=404, detail="Workspace vector store not found")
+        if not filenames:
+             return {
+                "answer": "This workspace has no documents associated with it.",
+                "citations": []
+            }
 
-        # Step 1: Retrieve relevant documents
-        docs = retriever.retrieve(question)
+        # Step 1: build filter
+        # Pinecone "in" filter: {"doc_name": {"$in": ["a.pdf", "b.pdf"]}}
+        # If there are many files, this might hit filter limits, but fine for Vercel demo.
+        search_filter = {"doc_name": {"$in": filenames}}
+
+        # Step 2: Retrieve relevant documents
+        try:
+            docs = self.retriever.retrieve(question, filter=search_filter)
+        except Exception as e:
+            # Handle Pinecone errors (like index not ready)
+            print(f"Retrieval error: {e}")
+            return {
+                "answer": f"Error retrieving documents: {str(e)}",
+                "citations": []
+            }
 
         if not docs:
             return {
@@ -40,20 +58,20 @@ class RAGService:
                 "citations": []
             }
 
-        # Step 2: Build grounded prompt
+        # Step 3: Build grounded prompt
         prompt = build_prompt(question, docs)
 
-        # Step 3: Generate answer
+        # Step 4: Generate answer
         answer = self.generator.generate(prompt)
 
-        # Step 4: Enforce refusal rule
+        # Step 5: Enforce refusal rule
         if answer.strip() == REFUSAL_RESPONSE:
             return {
                 "answer": REFUSAL_RESPONSE,
                 "citations": []
             }
 
-        # Step 5: Build citations from metadata
+        # Step 6: Build citations from metadata
         citations: List[Dict] = []
         for doc in docs:
             citations.append({
