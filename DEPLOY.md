@@ -9,7 +9,11 @@ Instead of storing files on disk (which fails on Vercel), it now uses **Pinecone
 
 1.  **Pinecone API Key**:
     *   Sign up at [pinecone.io](https://pinecone.io) (Free Starter Tier).
-    *   Create an Index named `compliance-policy` (Dimension: **384**, Metric: **Cosine**).
+    *   **CRITICAL**: You MUST manually create an Index named `compliance-policy`.
+    *   Dimension: **384**
+    *   Metric: **Cosine**
+    *   Spec: **Serverless (aws/us-east-1)**
+    *   *Note: Vercel functions time out too fast to create this automatically. You must do it in the console.*
     *   Copy your API Key.
 2.  **HuggingFace Token**:
     *   Sign up at [huggingface.co](https://huggingface.co).
