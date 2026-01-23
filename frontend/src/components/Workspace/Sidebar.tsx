@@ -1,4 +1,4 @@
-import { ShieldCheck, Key } from 'lucide-react';
+import { ShieldCheck, Key, Moon, Sun } from 'lucide-react';
 import { DocumentList } from './DocumentList';
 import { UploadPlaceholder } from './UploadPlaceholder';
 import type { DocumentMetadata } from '../../types/api';
@@ -10,6 +10,8 @@ interface SidebarProps {
     apiKey: string;
     onApiKeyChange: (key: string) => void;
     onUploadClick: (file: File) => void;
+    isDarkMode: boolean;
+    onToggleTheme: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -18,18 +20,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
     onToggle,
     apiKey,
     onApiKeyChange,
-    onUploadClick
+    onUploadClick,
+    isDarkMode,
+    onToggleTheme
 }) => {
     return (
         <div style={{
             width: '280px',
             height: '100vh',
-            borderRight: '1px solid var(--border-subtle)',
-            backgroundColor: 'var(--bg-surface)',
+            borderRight: '1px solid var(--border-glass)',
+            backgroundColor: 'var(--bg-sidebar)',
             display: 'flex',
             flexDirection: 'column',
             padding: 'var(--space-4)',
-            flexShrink: 0
+            flexShrink: 0,
+            backdropFilter: 'blur(10px)', // Glassmorphism
+            transition: 'background-color 0.3s ease, border-color 0.3s ease'
         }}>
             {/* App Header in Sidebar */}
             <div style={{
@@ -73,7 +79,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             border: apiKey ? '1px solid var(--color-success)' : '1px solid var(--border-subtle)',
                             outline: 'none',
                             backgroundColor: 'var(--bg-app)',
-                            color: 'var(--text-primary)'
+                            color: 'var(--text-primary)',
+                            transition: 'all 0.2s ease'
                         }}
                     />
                 </div>
@@ -101,15 +108,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <UploadPlaceholder onUpload={onUploadClick} />
             </div>
 
-            {/* Footer / User Info could go here */}
+            {/* Footer */}
             <div style={{
                 marginTop: 'auto',
                 paddingTop: 'var(--space-3)',
                 borderTop: '1px solid var(--border-subtle)',
-                fontSize: '0.75rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
                 color: 'var(--text-tertiary)'
             }}>
-                v1.0.0 • Local Environment
+                <button
+                    onClick={onToggleTheme}
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 'var(--space-2)',
+                        fontSize: '0.8rem',
+                        color: 'var(--text-secondary)',
+                        padding: '4px 8px',
+                        borderRadius: 'var(--radius-sm)',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                    {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
+                    {isDarkMode ? 'Light Mode' : 'Dark Mode'}
+                </button>
             </div>
         </div>
     );

@@ -3,15 +3,43 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { CitationBlock } from './CitationBlock';
 import { User, Bot, Copy, Check } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface MessageBubbleProps {
     message: Message;
+    animate?: boolean;
 }
 
-export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
+export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, animate = false }) => {
     const isUser = message.role === 'user';
     const [copied, setCopied] = useState(false);
+
+    // Typewriter State
+    const [displayedText, setDisplayedText] = useState(animate && !isUser ? '' : message.text);
+    const [isTyping, setIsTyping] = useState(animate && !isUser);
+
+    useEffect(() => {
+        if (!animate || isUser) {
+            setDisplayedText(message.text);
+            setIsTyping(false);
+            return;
+        }
+
+        let currentIndex = 0;
+        const speed = 15; // ms per char (adjust for feel)
+
+        const intervalId = setInterval(() => {
+            if (currentIndex < message.text.length) {
+                setDisplayedText(message.text.slice(0, currentIndex + 1));
+                currentIndex++;
+            } else {
+                setIsTyping(false);
+                clearInterval(intervalId);
+            }
+        }, speed);
+
+        return () => clearInterval(intervalId);
+    }, [message.text, animate, isUser]);
 
     const handleCopy = () => {
         navigator.clipboard.writeText(message.text);
@@ -22,13 +50,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
     return (
         <div style={{
             display: 'flex',
-            flexDirection: 'column', // Stack text and citations vertically
+            flexDirection: 'column',
             alignItems: isUser ? 'flex-end' : 'flex-start',
             margin: 'var(--space-6) 0',
-            maxWidth: '85%', // Prevent full width for readability
+            maxWidth: '85%',
             alignSelf: isUser ? 'flex-end' : 'flex-start',
-            // Note: alignSelf only works if parent is flex col. 
-            // We will handle container alignment in the parent.
             width: '100%'
         }}>
 
@@ -54,8 +80,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
                 </div>
                 <span style={{ fontWeight: 600 }}>{isUser ? 'You' : 'Compliance Assistant'}</span>
 
-                {/* Copy Button for Assistant */}
-                {!isUser && !message.isStreaming && (
+                {/* Copy Button (Only show when not typing) */}
+                {!isUser && !isTyping && (
                     <button
                         onClick={handleCopy}
                         style={{
@@ -83,19 +109,17 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
                 boxShadow: isUser ? 'var(--shadow-md)' : 'var(--shadow-sm)',
                 border: isUser ? 'none' : '1px solid var(--border-subtle)',
                 lineHeight: 1.6,
-                whiteSpace: 'pre-wrap', // Preserve newlines
                 fontSize: '1rem',
-                maxWidth: isUser ? '100%' : '100%', // Let parent constrain
+                maxWidth: '100%',
                 overflowWrap: 'break-word',
+                transition: 'background-color 0.3s'
             }}>
                 {isUser ? (
-                    // User messages are simple text
                     <div style={{ whiteSpace: 'pre-wrap' }}>{message.text}</div>
                 ) : (
-                    // Assistant messages get full Markdown power
                     <div className="markdown-content">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                            {message.text}
+                            {displayedText}
                         </ReactMarkdown>
                     </div>
                 )}

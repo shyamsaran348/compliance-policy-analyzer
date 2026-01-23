@@ -9,6 +9,20 @@ import type { DocumentMetadata } from './types/api';
 import { documentService, workspaceService } from './api/services';
 
 function App() {
+  // Theme State
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    return localStorage.getItem('compliance_theme') === 'dark';
+  });
+
+  const toggleTheme = () => {
+    setIsDarkMode(prev => !prev);
+  };
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
+    localStorage.setItem('compliance_theme', isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode]);
+
   // Global State
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('compliance_api_key') || '');
 
@@ -121,7 +135,9 @@ function App() {
       flexDirection: 'row',
       height: '100vh',
       backgroundColor: 'var(--bg-app)',
-      overflow: 'hidden'
+      overflow: 'hidden',
+      color: 'var(--text-primary)', // Ensure text color inherits
+      transition: 'background-color 0.3s ease, color 0.3s ease'
     }}>
 
       {/* Sidebar - Workspace Manager */}
@@ -132,6 +148,8 @@ function App() {
         apiKey={apiKey}
         onApiKeyChange={setApiKey}
         onUploadClick={handleUpload}
+        isDarkMode={isDarkMode}
+        onToggleTheme={toggleTheme}
       />
 
       {/* Main Content Area */}
@@ -206,7 +224,11 @@ function App() {
           width: '100%'
         }}>
           {selectedDocIds.length > 0 ? (
-            <MessageList messages={messages} isLoading={isLoading} />
+            <MessageList
+              messages={messages}
+              isLoading={isLoading}
+              onExampleClick={(text) => handleSendWrapper(text, apiKey)}
+            />
           ) : (
             <div style={{
               flex: 1,
