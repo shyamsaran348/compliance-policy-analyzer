@@ -1,55 +1,55 @@
 # backend/app/rag/generator.py
 
-import os
 from groq import Groq
-
+from app.core.config import settings
 
 class LLMGenerator:
     """
     LLM Generator using Groq + LLaMA 3 (8B).
-
-    This class is responsible ONLY for:
-    - Sending a grounded prompt to the LLM
-    - Returning raw text output
+    
+    Refactored for Lazy Initialization to prevent Vercel startup crashes if keys are missing.
     """
 
     def __init__(self):
-        api_key = os.getenv("GROQ_API_KEY")
-        if not api_key:
-            raise RuntimeError("GROQ_API_KEY is not set in environment variables")
-
-        self.client = Groq(api_key=api_key)
-
-        # Locked model
         self.model_name = "llama-3.1-8b-instant"
+        self._client = None
+
+    @property
+    def client(self):
+        if self._client is None:
+            if not settings.GROQ_API_KEY:
+                # We do NOT raise here, because this might be accessed at startup.
+                # We return None and handle it in generate()
+                return None
+            self._client = Groq(api_key=settings.GROQ_API_KEY)
+        return self._client
 
     def generate(self, prompt: str) -> str:
         """
         Generate an answer from the LLM using a grounded prompt.
-
-        Args:
-            prompt (str): Fully constructed grounded prompt
-
-        Returns:
-            str: Model-generated answer (plain text)
         """
+        if not self.client:
+            return "Configuration Error: GROQ_API_KEY is unset. Please add it to Vercel Environment Variables."
 
-        response = self.client.chat.completions.create(
-            model=self.model_name,
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            temperature=0.0,  # Deterministic output
-            max_tokens=512
-        )
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model_name,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                temperature=0.0,
+                max_tokens=512
+            )
+            answer = response.choices[0].message.content.strip()
+            
+            if not answer:
+                return "Answer not found in the provided documents."
 
-        answer = response.choices[0].message.content.strip()
+            return answer
 
-        # Absolute safety net (defensive)
-        if not answer:
-            return "Answer not found in the provided documents."
-
-        return answer
+        except Exception as e:
+            print(f"LLM Generation Error: {e}")
+            return f"Error contacting LLM Provider: {str(e)}"
