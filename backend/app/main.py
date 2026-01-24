@@ -1,3 +1,4 @@
+from app.core import patch # apply patches immediately
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
