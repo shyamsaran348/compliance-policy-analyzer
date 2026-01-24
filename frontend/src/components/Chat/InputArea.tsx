@@ -86,7 +86,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
         }}>
 
             {/* Suggestions Chips */}
-            {messagesCount === 0 && (
+            {messagesCount === 0 && !disabled && (
                 <div style={{
                     display: 'flex',
                     gap: 'var(--space-2)',
