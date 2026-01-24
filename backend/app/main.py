@@ -4,10 +4,26 @@ import os
 
 # Serverless Hack: Ensure HOME and specialized dirs point to /tmp
 # This prevents libraries like huggingface_hub or matplotlib from crashing
-# when trying to create config files in read-only /var/task or /home/sbx keys.
 os.environ["HF_HOME"] = "/tmp/hf"
 os.environ["MPLCONFIGDIR"] = "/tmp/matplotlib"
 os.environ["TRANSFORMERS_CACHE"] = "/tmp/transformers"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+# MONKEYPATCH: Fix for "OSError: [Errno 38] Function not implemented" or Errno 2 on Vercel
+# Vercel/AWS Lambda doesn't support multiprocessing.SemLock (no /dev/shm).
+# We mock it to allow libraries to import without crashing, assuming single-threaded execution.
+import multiprocessing.synchronize
+def _sem_lock_patch(*args, **kwargs):
+    # Return a dummy context manager that does nothing
+    class DummyLock:
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def acquire(self, *args, **kwargs): return True
+        def release(self, *args, **kwargs): pass
+    return DummyLock()
+
+multiprocessing.synchronize.SemLock = _sem_lock_patch
+# End Monkeypatch
 
 from app.api.chat import router as chat_router
 from app.api.documents import router as documents_router
