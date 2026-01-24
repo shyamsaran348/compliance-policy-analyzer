@@ -36,15 +36,23 @@ class EmbeddingModel:
                 return response.json()
             except Exception as e:
                 print(f"Embedding API Error (Attempt {attempt+1}): {e}")
-                if response.status_code == 503:
-                    # Model loading
-                    time.sleep(2)
-                    continue
+                # Try to extract detailed error if possible
+                error_detail = str(e)
+                if isinstance(e, requests.exceptions.HTTPError):
+                     if e.response.status_code == 503:
+                        time.sleep(2)
+                        continue
+                     try:
+                        error_detail = str(e.response.json())
+                     except:
+                        pass
+                
+                if attempt == 2: # Last attempt
+                    raise ValueError(f"HF API Failed: {error_detail}")
+                
                 time.sleep(1)
         
-        # If all retries fail, return empty (or raise)
-        # For robustness, we raise so we know it failed
-        raise ValueError("Failed to generate embeddings via HuggingFace API")
+        raise ValueError("Failed to generate embeddings via HuggingFace API (Unknown Error)")
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         # HF API has limits on batch size, splitting if necessary could be good
