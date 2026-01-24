@@ -12,7 +12,9 @@ class EmbeddingModel:
     def __init__(self):
         # Using a solid general purpose model
         self.model_name = "sentence-transformers/all-MiniLM-L6-v2"
-        self.api_url = f"https://router.huggingface.co/hf-inference/models/{self.model_name}"
+        # We need to force 'feature-extraction' task because the default pipeline for this model
+        # is 'sentence-similarity' which expects different inputs.
+        self.api_url = f"https://router.huggingface.co/hf-inference/pipeline/feature-extraction/{self.model_name}"
         
         if not settings.HUGGINGFACEHUB_API_TOKEN:
             print("⚠️ WARNING: HUGGINGFACEHUB_API_TOKEN not set. Embeddings will fail.")
