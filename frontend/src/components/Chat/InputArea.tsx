@@ -82,7 +82,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
             maxWidth: '800px',
             margin: '0 auto',
             position: 'relative',
-            padding: 'var(--space-4)'
+            padding: '0 var(--space-4)'
         }}>
 
             {/* Suggestions Chips */}

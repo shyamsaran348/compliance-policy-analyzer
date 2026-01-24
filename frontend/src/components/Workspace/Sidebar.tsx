@@ -1,4 +1,4 @@
-import { ShieldCheck, Key, Moon, Sun } from 'lucide-react';
+import { ShieldCheck, Key, Moon, Sun, X } from 'lucide-react';
 import { DocumentList } from './DocumentList';
 import { UploadPlaceholder } from './UploadPlaceholder';
 import type { DocumentMetadata } from '../../types/api';
@@ -12,6 +12,8 @@ interface SidebarProps {
     onUploadClick: (file: File) => void;
     isDarkMode: boolean;
     onToggleTheme: () => void;
+    isOpen?: boolean;
+    onClose?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -22,32 +24,37 @@ export const Sidebar: React.FC<SidebarProps> = ({
     onApiKeyChange,
     onUploadClick,
     isDarkMode,
-    onToggleTheme
+    onToggleTheme,
+    isOpen = true,
+    onClose
 }) => {
     return (
-        <div style={{
-            width: '280px',
-            height: '100vh',
-            borderRight: '1px solid var(--border-glass)',
-            backgroundColor: 'var(--bg-sidebar)',
-            display: 'flex',
-            flexDirection: 'column',
-            padding: 'var(--space-4)',
-            flexShrink: 0,
-            backdropFilter: 'blur(10px)', // Glassmorphism
-            transition: 'background-color 0.3s ease, border-color 0.3s ease'
-        }}>
+        <div className={`app-sidebar ${isOpen ? 'open' : ''}`}>
+            {/* Mobile Close Button */}
+            <div className="mobile-only" style={{
+                position: 'absolute',
+                top: '1rem',
+                right: '1rem',
+                display: 'none' // Handled by CSS media query ideally, but let's force it inline for now or add to main.css
+            }}>
+                <button onClick={onClose} style={{ color: 'var(--text-secondary)' }}>
+                    <X size={24} />
+                </button>
+            </div>
+
             {/* App Header in Sidebar */}
             <div style={{
                 marginBottom: 'var(--space-6)',
                 paddingBottom: 'var(--space-4)',
-                borderBottom: '1px solid var(--border-subtle)'
+                borderBottom: '1px solid var(--border-subtle)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
             }}>
                 <div style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 'var(--space-2)',
-                    marginBottom: 'var(--space-4)'
+                    gap: 'var(--space-2)'
                 }}>
                     <div style={{
                         color: 'var(--color-primary)',
@@ -62,28 +69,41 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         </h1>
                     </div>
                 </div>
-
-                {/* API Key Input */}
-                <div style={{ position: 'relative' }}>
-                    <Key size={14} style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
-                    <input
-                        type="password"
-                        value={apiKey}
-                        onChange={(e) => onApiKeyChange(e.target.value)}
-                        placeholder="Enter API Key"
+                {/* Mobile Close Icon (Alternative position) */}
+                {onClose && (
+                    <button
+                        onClick={onClose}
                         style={{
-                            width: '100%',
-                            padding: '6px 8px 6px 28px',
-                            fontSize: '0.8rem',
-                            borderRadius: 'var(--radius-sm)',
-                            border: apiKey ? '1px solid var(--color-success)' : '1px solid var(--border-subtle)',
-                            outline: 'none',
-                            backgroundColor: 'var(--bg-app)',
-                            color: 'var(--text-primary)',
-                            transition: 'all 0.2s ease'
+                            display: 'none', // Overridden by media query
+                            color: 'var(--text-tertiary)'
                         }}
-                    />
-                </div>
+                        className="mobile-close-btn"
+                    >
+                        <X size={20} />
+                    </button>
+                )}
+            </div>
+
+            {/* API Key Input */}
+            <div style={{ marginBottom: 'var(--space-4)', position: 'relative' }}>
+                <Key size={14} style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
+                <input
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => onApiKeyChange(e.target.value)}
+                    placeholder="Enter API Key"
+                    style={{
+                        width: '100%',
+                        padding: '6px 8px 6px 28px',
+                        fontSize: '0.8rem',
+                        borderRadius: 'var(--radius-sm)',
+                        border: apiKey ? '1px solid var(--color-success)' : '1px solid var(--border-subtle)',
+                        outline: 'none',
+                        backgroundColor: 'var(--bg-app)',
+                        color: 'var(--text-primary)',
+                        transition: 'all 0.2s ease'
+                    }}
+                />
             </div>
 
             {/* Document Section */}
@@ -138,6 +158,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     {isDarkMode ? 'Light Mode' : 'Dark Mode'}
                 </button>
             </div>
+            <style>{`
+                @media (max-width: 768px) {
+                    .mobile-close-btn { display: block !important; }
+                }
+            `}</style>
         </div>
     );
 };

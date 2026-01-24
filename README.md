@@ -2,6 +2,8 @@
 
 A production-grade, full-stack **Retrieval-Augmented Generation (RAG)** application designed to answer compliance questions strictly based on uploaded policy documents. This system ensures **zero hallucinations** by satisfying the "Answer not found" constraint when relevant information is missing.
 
+**Live Demo:** [https://compliance-policy-analyzer-frontend.vercel.app](https://compliance-policy-analyzer-frontend.vercel.app)
+
 ---
 
 ## 🚀 Tech Stack

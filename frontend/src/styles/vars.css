@@ -76,6 +76,10 @@
   /* --- Transitions --- */
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* --- Layout & Breakpoints --- */
+  --sidebar-width: 280px;
+  --header-height: 60px;
 }
 
 /* Dark Mode Tokens */
@@ -119,4 +123,15 @@
   /* Slate 700 */
   --border-focus: #6366F1;
   --border-glass: rgba(255, 255, 255, 0.1);
+}
+
+/* Mobile Adjustments */
+@media (max-width: 768px) {
+  :root {
+    --space-4: 0.75rem;
+    --space-6: 1rem;
+    --space-8: 1.5rem;
+    --sidebar-width: 100%;
+    /* Full width when open on mobile */
+  }
 }

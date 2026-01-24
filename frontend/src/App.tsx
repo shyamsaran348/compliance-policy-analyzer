@@ -4,7 +4,7 @@ import { MessageList } from './components/Chat/MessageList';
 import { InputArea } from './components/Chat/InputArea';
 import { Sidebar } from './components/Workspace/Sidebar';
 import { WorkspaceHeader } from './components/Workspace/WorkspaceHeader';
-import { AlertCircle, RefreshCw } from 'lucide-react';
+import { AlertCircle, RefreshCw, Menu } from 'lucide-react';
 import type { DocumentMetadata } from './types/api';
 import { documentService, workspaceService } from './api/services';
 
@@ -30,6 +30,9 @@ function App() {
   useEffect(() => {
     localStorage.setItem('compliance_api_key', apiKey);
   }, [apiKey]);
+
+  // Sidebar State (Mobile)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Workspace State
   const [documents, setDocuments] = useState<DocumentMetadata[]>([]);
@@ -130,15 +133,13 @@ function App() {
   const activeError = appError || chatError;
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'row',
-      height: '100vh',
-      backgroundColor: 'var(--bg-app)',
-      overflow: 'hidden',
-      color: 'var(--text-primary)', // Ensure text color inherits
-      transition: 'background-color 0.3s ease, color 0.3s ease'
-    }}>
+    <div className="app-container">
+
+      {/* Mobile Overlay */}
+      <div
+        className={`sidebar-overlay ${isSidebarOpen ? 'visible' : ''}`}
+        onClick={() => setIsSidebarOpen(false)}
+      />
 
       {/* Sidebar - Workspace Manager */}
       <Sidebar
@@ -150,21 +151,39 @@ function App() {
         onUploadClick={handleUpload}
         isDarkMode={isDarkMode}
         onToggleTheme={toggleTheme}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
       />
 
       {/* Main Content Area */}
-      <div style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'relative',
-        maxWidth: '1000px',
-        margin: '0 auto',
-        width: '100%'
-      }}>
+      <div className="app-main">
 
-        {/* Workspace Context Header */}
-        <WorkspaceHeader selectedDocuments={selectedDocuments} />
+        {/* Mobile Header Bar */}
+        <div className="mobile-header mobile-only" style={{
+          display: 'none', // Overridden by media query in CSS ideally, but here inline for now
+          alignItems: 'center',
+          padding: 'var(--space-3)',
+          borderBottom: '1px solid var(--border-subtle)',
+          backgroundColor: 'var(--bg-app)',
+          gap: 'var(--space-3)'
+        }}>
+          <button onClick={() => setIsSidebarOpen(true)} style={{ color: 'var(--text-primary)' }}>
+            <Menu size={24} />
+          </button>
+          <span style={{ fontWeight: 600 }}>Policy Analyzer</span>
+        </div>
+        <style>{`
+            @media (max-width: 768px) { .mobile-header { display: flex !important; } }
+        `}</style>
+
+        {/* Workspace Context Header (Hidden on mobile if desired, or kept) */}
+        <div className="desktop-only">
+          <WorkspaceHeader selectedDocuments={selectedDocuments} />
+        </div>
+        <style>{`
+            @media (max-width: 768px) { .desktop-only { display: none; } }
+        `}</style>
+
 
         {/* Notification Toast */}
         {notification && (
@@ -208,7 +227,9 @@ function App() {
             zIndex: 1000,
             border: '1px solid var(--color-error)',
             fontSize: '0.9rem',
-            fontWeight: 500
+            fontWeight: 500,
+            width: '90%',
+            justifyContent: 'center'
           }}>
             <AlertCircle size={18} />
             {activeError}
@@ -216,13 +237,7 @@ function App() {
         )}
 
         {/* Main Chat Area */}
-        <main style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          width: '100%'
-        }}>
+        <main className="chat-container">
           {selectedDocIds.length > 0 ? (
             <MessageList
               messages={messages}
