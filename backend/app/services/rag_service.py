@@ -67,7 +67,7 @@ class RAGService:
         # Step 5: Enforce refusal rule
         if answer.strip() == REFUSAL_RESPONSE:
             return {
-                "answer": REFUSAL_RESPONSE,
+                "answer": f"{REFUSAL_RESPONSE} (Debug: LLM refused. Retrieved {len(docs)} docs. First chunk: {docs[0].page_content[:50]}...)",
                 "citations": []
             }
 
