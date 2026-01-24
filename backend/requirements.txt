@@ -12,4 +12,5 @@ requests
 pinecone-client
 python-multipart
 pypdf
+huggingface_hub
 
