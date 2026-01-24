@@ -53,27 +53,15 @@ def index_chunks(chunks):
     
     index_name = settings.PINECONE_INDEX_NAME
 
-    # Check if index exists, if not create (Serverless)
-    existing_indexes = [i.name for i in pc.list_indexes()]
-    if index_name not in existing_indexes:
-        print(f"Creating Pinecone index: {index_name}...")
-        pc.create_index(
-            name=index_name,
-            dimension=384, # Match MiniLM-L6-v2 dimension
-            metric="cosine",
-            spec=ServerlessSpec(
-                cloud="aws",
-                region="us-east-1"
-            )
-        )
-        while not pc.describe_index(index_name).status['ready']:
-            time.sleep(1)
-
     # Store
-    vectorstore = PineconeVectorStore.from_documents(
-        documents=chunks,
-        embedding=embedding_model.embedder,
-        index_name=index_name
-    )
-
-    print(f"✅ Stored {len(chunks)} chunks in Pinecone index: {index_name}")
+    # Serverless Optimization: Assume index exists to avoid timeouts.
+    try:
+        vectorstore = PineconeVectorStore.from_documents(
+            documents=chunks,
+            embedding=embedding_model.embedder,
+            index_name=index_name
+        )
+        print(f"✅ Stored {len(chunks)} chunks in Pinecone index: {index_name}")
+    except Exception as e:
+        print(f"❌ Failed to store in Pinecone: {e}")
+        raise e
