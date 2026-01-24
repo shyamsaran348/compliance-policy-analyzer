@@ -40,7 +40,7 @@ class LLMGenerator:
                         "content": prompt
                     }
                 ],
-                temperature=0.0,
+                temperature=0.1,
                 max_tokens=512
             )
             answer = response.choices[0].message.content.strip()
