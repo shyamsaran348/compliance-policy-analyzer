@@ -1,5 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import os
+
+# Serverless Hack: Ensure HOME and specialized dirs point to /tmp
+# This prevents libraries like huggingface_hub or matplotlib from crashing
+# when trying to create config files in read-only /var/task or /home/sbx keys.
+os.environ["HF_HOME"] = "/tmp/hf"
+os.environ["MPLCONFIGDIR"] = "/tmp/matplotlib"
+os.environ["TRANSFORMERS_CACHE"] = "/tmp/transformers"
+
 from app.api.chat import router as chat_router
 from app.api.documents import router as documents_router
 from app.api.workspaces import router as workspaces_router

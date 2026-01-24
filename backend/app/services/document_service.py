@@ -48,6 +48,9 @@ class DocumentService:
             return doc_meta
 
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}")
+            import traceback
+            tb = traceback.format_exc()
+            print(f"Ingestion Error: {tb}")
+            raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)} | Trace: {tb[-200:]}")
 
 document_service = DocumentService()
