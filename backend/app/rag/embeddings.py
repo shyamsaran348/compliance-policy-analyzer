@@ -12,7 +12,7 @@ class EmbeddingModel:
     def __init__(self):
         # Using a solid general purpose model
         self.model_name = "sentence-transformers/all-MiniLM-L6-v2"
-        self.api_url = f"https://router.huggingface.co/pipeline/feature-extraction/{self.model_name}"
+        self.api_url = f"https://router.huggingface.co/hf-inference/models/{self.model_name}"
         
         if not settings.HUGGINGFACEHUB_API_TOKEN:
             print("⚠️ WARNING: HUGGINGFACEHUB_API_TOKEN not set. Embeddings will fail.")
