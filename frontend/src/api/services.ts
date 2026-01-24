@@ -22,7 +22,17 @@ export const documentService = {
             },
             body: formData
         });
-        if (!response.ok) throw new Error('Upload failed');
+
+        if (!response.ok) {
+            let errorMsg = 'Upload failed';
+            try {
+                const errorData = await response.json();
+                errorMsg = errorData.detail || errorData.message || 'Upload failed';
+            } catch (e) {
+                console.error("Failed to parse error response", e);
+            }
+            throw new Error(errorMsg);
+        }
         return response.json();
     }
 };

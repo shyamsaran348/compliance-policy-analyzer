@@ -74,8 +74,8 @@ function App() {
       setDocuments(prev => [...prev, newDoc]);
       setNotification("Upload complete.");
       setTimeout(() => setNotification(null), 3000);
-    } catch (err) {
-      setAppError("Upload failed.");
+    } catch (err: any) {
+      setAppError(err.message || "Upload failed.");
     }
   };
 
