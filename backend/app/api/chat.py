@@ -22,9 +22,12 @@ def chat(
 ):
     try:
         return rag_service.run(request.question, request.workspace_id)
-    except Exception:
-        # Never leak internal details
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        print(f"Chat Error: {tb}")
+        # Expose error for debugging purposes in this phase
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
+            detail=f"Chat failed: {str(e)} | Trace: {tb[-200:]}"
         )
