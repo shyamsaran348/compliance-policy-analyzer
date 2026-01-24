@@ -54,7 +54,7 @@ class RAGService:
 
         if not docs:
             return {
-                "answer": REFUSAL_RESPONSE,
+                "answer": f"{REFUSAL_RESPONSE} (Debug: Retrieved 0 documents from Pinecone. Index might be empty or filter mismatch.)",
                 "citations": []
             }
 
