@@ -40,7 +40,7 @@ class DocumentService:
                 id=f"doc_{int(datetime.now().timestamp())}",
                 filename=file.filename,
                 upload_timestamp=datetime.now(),
-                status="indexed",
+                status="available",
                 page_count=len(reader.pages)
             )
             _memory_metadata_store.append(doc_meta)
